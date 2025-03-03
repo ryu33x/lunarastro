@@ -2,8 +2,6 @@
 
 Esta aplicación web muestra un calendario interactivo que integra las fases lunares y eventos astronómicos importantes. Diseñada con una elegante interfaz en tonos oscuros, ideal para visualizar información astronómica.
 
-![Vista previa del Calendario Lunar y Astronómico](https://api/placeholder/800/400)
-
 ## Características
 
 - **Calendario mensual interactivo**: Navegación sencilla entre meses con botones de avance y retroceso
