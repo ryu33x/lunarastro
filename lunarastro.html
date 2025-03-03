@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Lunar y Astronómico</title>
+    <style>
+        :root {
+            --bg-dark: #1a1a2e;
+            --bg-medium: #16213e;
+            --bg-light: #0f3460;
+            --text-light: #e7e7e7;
+            --accent: #4cc9f0;
+            --moon-color: #f1f1f1;
+            --highlight: #7209b7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .calendar-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        button {
+            background: var(--bg-light);
+            color: var(--text-light);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: var(--accent);
+        }
+
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+            background: var(--bg-light);
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .calendar-day {
+            background: var(--bg-medium);
+            padding: 1rem;
+            min-height: 150px;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .other-month {
+            opacity: 0.5;
+        }
+
+        .today {
+            border: 2px solid var(--accent);
+        }
+
+        .moon-phase {
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            padding: 0.3rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+        }
+
+        .astro-event {
+            font-size: 0.75rem;
+            background: var(--highlight);
+            padding: 0.2rem 0.4rem;
+            margin-top: 0.3rem;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .moon-icon {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--moon-color);
+            margin-right: 0.3rem;
+            vertical-align: middle;
+        }
+
+        .new-moon .moon-icon {
+            background: transparent;
+            border: 1px solid var(--text-light);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="calendar-controls">
+            <button id="prev-month">◀</button>
+            <h2 id="current-month"></h2>
+            <button id="next-month">▶</button>
+        </div>
+        <div class="calendar">
+            <div class="calendar-header">
+                <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div>
+                <div>Jue</div><div>Vie</div><div>Sáb</div>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        class LunarCalendar {
+            constructor() {
+                this.currentDate = new Date();
+                this.moonPhases = {
+                    new: 'Nueva',
+                    waxingCrescent: 'Creciente',
+                    firstQuarter: 'Cuarto Creciente',
+                    waxingGibbous: 'Gibosa Creciente',
+                    full: 'Llena',
+                    waningGibbous: 'Gibosa Menguante',
+                    lastQuarter: 'Cuarto Menguante',
+                    waningCrescent: 'Menguante'
+                };
+                
+                this.astronomicalEvents = {
+                    '2023-3-20': [{ name: 'Equinoccio de Primavera', type: 'event' }],
+                    '2023-3-25': [{ name: 'Eclipse Lunar', type: 'event' }],
+                    '2023-3-7': [{ name: 'Conjunción Luna-Marte', type: 'conjunction' }]
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.calendarGrid = document.getElementById('calendar-grid');
+                this.currentMonthDisplay = document.getElementById('current-month');
+                this.setupControls();
+                this.render();
+            }
+
+            setupControls() {
+                document.getElementById('prev-month').addEventListener('click', () => this.changeMonth(-1));
+                document.getElementById('next-month').addEventListener('click', () => this.changeMonth(1));
+            }
+
+            changeMonth(offset) {
+                this.currentDate.setMonth(this.currentDate.getMonth() + offset);
+                this.render();
+            }
+
+            render() {
+                this.currentMonthDisplay.textContent = 
+                    `${this.getMonthName()} ${this.currentDate.getFullYear()}`;
+                
+                this.calendarGrid.innerHTML = '';
+                this.generateCalendarDays();
+            }
+
+            getMonthName() {
+                const months = [
+                    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+                ];
+                return months[this.currentDate.getMonth()];
+            }
+
+            generateCalendarDays() {
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                const today = new Date();
+
+                // Calcular días a mostrar
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const startDay = firstDay.getDay();
+                const prevMonthDays = new Date(year, month, 0).getDate();
+
+                // Generar días
+                const days = [];
+                
+                // Días del mes anterior
+                for(let i = startDay; i > 0; i--) {
+                    days.push({
+                        day: prevMonthDays - i + 1,
+                        otherMonth: true
+                    });
+                }
+
+                // Días del mes actual
+                for(let i = 1; i <= lastDay.getDate(); i++) {
+                    days.push({
+                        day: i,
+                        date: new Date(year, month, i),
+                        currentMonth: true,
+                        isToday: today.getFullYear() === year && 
+                                today.getMonth() === month && 
+                                today.getDate() === i
+                    });
+                }
+
+                // Completar con días del próximo mes
+                while(days.length % 7 !== 0) {
+                    days.push({
+                        day: days.length % 7 + 1,
+                        otherMonth: true
+                    });
+                }
+
+                // Renderizar días
+                days.forEach(day => this.createDayElement(day));
+            }
+
+            createDayElement(dayData) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                if(dayData.otherMonth) dayElement.classList.add('other-month');
+                if(dayData.isToday) dayElement.classList.add('today');
+
+                // Contenido del día
+                dayElement.innerHTML = `
+                    <div class="day-number">${dayData.day}</div>
+                    ${dayData.date ? this.getMoonPhase(dayData.date) : ''}
+                    ${dayData.date ? this.getAstroEvents(dayData.date) : ''}
+                `;
+
+                this.calendarGrid.appendChild(dayElement);
+            }
+
+            getMoonPhase(date) {
+                // Cálculo simplificado de fase lunar
+                const synodicMonth = 29.53058867;
+                const knownNewMoon = new Date(2023, 2, 7); // Fase de referencia
+                const diffTime = date - knownNewMoon;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                const moonAge = diffDays % synodicMonth;
+                
+                let phase;
+                if(moonAge < 1) phase = 'new';
+                else if(moonAge < 7) phase = 'waxingCrescent';
+                else if(moonAge < 14) phase = 'firstQuarter';
+                else if(moonAge < 21) phase = 'waxingGibbous';
+                else if(moonAge < 22) phase = 'full';
+                else if(moonAge < 29) phase = 'waningGibbous';
+                else phase = 'lastQuarter';
+
+                return `
+                    <div class="moon-phase ${phase}">
+                        <span class="moon-icon"></span>
+                        ${this.moonPhases[phase]}
+                    </div>
+                `;
+            }
+
+            getAstroEvents(date) {
+                const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+                const events = this.astronomicalEvents[dateKey] || [];
+                return events.map(event => `
+                    <div class="astro-event ${event.type}">
+                        ${event.name}
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Inicializar calendario
+        new LunarCalendar();
+    </script>
+</body>
+</html>
